@@ -7,7 +7,7 @@ permissions:
   contents: write
 jobs:
   render:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -15,6 +15,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install tools
+        timeout-minutes: 8
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fontconfig
           pip install -q playwright edge-tts
@@ -26,6 +27,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then cp sample_script.json script.json; else printf '%s' "$PAYLOAD" > script.json; fi
       - name: Render
+        timeout-minutes: 12
         run: python render.py script.json out.mp4
       - name: Publish video
         env:
