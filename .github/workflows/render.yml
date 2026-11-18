@@ -1,0 +1,43 @@
+name: Render video
+on:
+  repository_dispatch:
+    types: [render-video]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install tools
+        timeout-minutes: 8
+        run: |
+          # Skip the slow manual-page index rebuild that can stall apt on GitHub runners
+          echo "set man-db/auto-update false" | sudo debconf-communicate >/dev/null 2>&1 || true
+          sudo rm -f /var/lib/man-db/auto-update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 install -y -qq --no-install-recommends ffmpeg \
+            || (sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 update -qq && sudo apt-get -o Acquire::Retries=3 install -y -qq --no-install-recommends ffmpeg)
+          pip install -q playwright edge-tts
+          python -m playwright install chromium
+          mkdir -p ~/.fonts && cp fonts/*.ttf ~/.fonts/ && fc-cache -f
+      - name: Write script
+        env:
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then cp sample_script.json script.json; else printf '%s' "$PAYLOAD" > script.json; fi
+      - name: Render
+        timeout-minutes: 12
+        run: python render.py script.json out.mp4
+      - name: Publish video
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NAME: video-row${{ github.event.client_payload.row || 'test' }}-${{ github.event.client_payload.job || 'sample' }}.mp4
+        run: |
+          gh release view videos >/dev/null 2>&1 || gh release create videos --title "Rendered videos" --notes "Videos made by the USP video maker"
+          cp out.mp4 "$NAME"
+          gh release upload videos "$NAME" --clobber
