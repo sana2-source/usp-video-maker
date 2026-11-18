@@ -1,0 +1,32 @@
+name: Voice samples
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  samples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Make voice samples
+        run: |
+          pip install edge-tts
+          TEXT="At USP Polymers LLP, we make custom TPE compounds that stay soft, match any colour, and bond directly with PP, ABS and PC. Request your free trial sample at usppolymers dot in."
+          n=1
+          for V in en-IN-PrabhatNeural en-IN-NeerjaNeural en-US-AndrewMultilingualNeural en-US-AvaMultilingualNeural en-US-BrianMultilingualNeural en-US-EmmaMultilingualNeural; do
+            edge-tts --voice "$V" --rate=-5% --text "$TEXT" --write-media "voice-$n-$V.mp3"
+            n=$((n+1))
+          done
+          ls -la *.mp3
+      - name: Publish samples
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view videos >/dev/null 2>&1 || gh release create videos --title "Videos" --notes "Rendered videos"
+          gh release upload videos voice-*.mp3 --clobber
