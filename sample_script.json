@@ -1,0 +1,9 @@
+{"scenes": [
+ {"type": "big_text", "line1": "Your customers judge your product", "line2": "in the first touch.", "background_word": "TOUCH", "voice": "Your customers judge your product in the very first touch."},
+ {"type": "reviews", "title": "Customer reviews · soft-grip tool handle", "items": ["The grip started peeling after a month.", "Feels sticky on hot days.", "Too hard. It slips in my hand."], "caption": "A bad grip sends buyers to a competitor.", "voice": "A grip that peels, turns sticky or feels hard quietly sends your buyers to a competitor."},
+ {"type": "big_text", "line1": "The fix isn't the design.", "line2": "It's the material.", "background_word": "TPE", "voice": "The fix isn't the design. It's the material."},
+ {"type": "compare", "line1": "Ordinary rubber vs custom TPE", "left_title": "Ordinary rubber", "left_items": ["Hardens over time", "Hard to colour-match", "Separate moulding step"], "right_title": "USP custom TPE", "right_items": ["Soft-touch that lasts", "Any colour, any feel", "Bonds with PP, ABS, PC"], "voice": "Custom TPE stays soft, matches any colour, and bonds directly with PP, ABS and PC."},
+ {"type": "spec_card", "title": "Custom TPE · built for your product", "items": ["Hardness: 0 Shore A to 60 Shore D", "Bonds with: PP · ABS · PC · Nylon", "Food grade: FDA options", "Rejection rate: below 1%"], "caption": "Tuned to your product.", "voice": "We tune hardness, bonding and colour to your product, with a rejection rate below one percent."},
+ {"type": "big_number", "number": "1000+", "line1": "manufacturers already trust USP", "voice": "Over one thousand manufacturers already trust USP Polymers."},
+ {"type": "end_card", "voice": "Request your free trial sample at usppolymers dot in."}
+]}
