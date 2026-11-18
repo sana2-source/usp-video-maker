@@ -8,7 +8,8 @@ Usage:  python render.py script.json output.mp4 [--no-tts]
 import asyncio, json, os, re, subprocess, sys, tempfile
 
 FPS = 30
-VOICE = os.environ.get("VOICE", "en-IN-PrabhatNeural")
+VOICES = {"andrew": "en-US-AndrewMultilingualNeural", "emma": "en-US-EmmaMultilingualNeural"}
+COMPANY = "USP Polymers LLP"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -22,9 +23,25 @@ def duration(path):
     return float(out.stdout.strip())
 
 
-async def tts(text, path):
+async def tts(text, path, voice):
     import edge_tts
-    await edge_tts.Communicate(text, VOICE, rate="+0%").save(path)
+    await edge_tts.Communicate(text, voice, rate="-5%").save(path)
+
+
+def pick_voice(raw):
+    """Voice from the script ("andrew" or "emma"); otherwise alternate by sheet row."""
+    v = str(raw.get("voice") or "").strip().lower()
+    if v in VOICES:
+        return VOICES[v]
+    try:
+        return VOICES["emma"] if int(raw.get("row")) % 2 == 0 else VOICES["andrew"]
+    except (TypeError, ValueError):
+        return VOICES["andrew"]
+
+
+def full_name(text):
+    """Always say the full company name: USP / USP Polymers -> USP Polymers LLP."""
+    return re.sub(r"\bUSP(?:\s+Polymers)?(?:\s+LLP)?\b", COMPANY, text)
 
 
 def clean_script(raw):
@@ -35,20 +52,24 @@ def clean_script(raw):
     for s in scenes:
         s = dict(s)
         s["type"] = (s.get("type") or "big_text").strip()
+        if s.get("voice"):
+            s["voice"] = full_name(str(s["voice"]))
         for k in ("items", "left_items", "right_items"):
             v = s.get(k)
             if isinstance(v, str):
                 s[k] = [x.strip() for x in re.split(r"\s*\|\s*", v) if x.strip()]
         out.append(s)
     if not out or out[-1]["type"] != "end_card":
-        out.append({"type": "end_card", "voice": "Request a free trial sample at usppolymers dot in."})
+        out.append({"type": "end_card", "voice": "Request your free trial sample from USP Polymers LLP at usppolymers dot in."})
     return {"scenes": out}
 
 
 def main():
     src, dst = sys.argv[1], sys.argv[2]
     no_tts = "--no-tts" in sys.argv
-    script = clean_script(json.load(open(src)))
+    raw = json.load(open(src))
+    voice_name = pick_voice(raw)
+    script = clean_script(raw)
     work = tempfile.mkdtemp()
 
     # 1. Voice per scene, and scene length = voice length + a short pause
@@ -57,7 +78,7 @@ def main():
         text = (s.get("voice") or "").strip()
         vf = os.path.join(work, f"v{i}.mp3")
         if text and not no_tts:
-            asyncio.run(tts(text, vf))
+            asyncio.run(tts(text, vf, voice_name))
             d = duration(vf)
         else:
             d = max(1.5, len(text.split()) / 2.6)
@@ -115,9 +136,11 @@ def main():
     run(["ffmpeg", "-y", "-v", "error", "-i", silent, "-i", voice] + music_in + [
         "-filter_complex",
         f"[2:a]volume=0.18,afade=t=in:d=1.5,afade=t=out:st={max(0, total - 2)}:d=2,atrim=0:{total}[m];"
-        "[1:a][m]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]",
+        "[1:a]acompressor=threshold=-20dB:ratio=3:attack=5:release=120,loudnorm=I=-16:TP=-1.5:LRA=9,aresample=44100[v];"
+        "[v][m]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]",
         "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
         "-movflags", "+faststart", "-shortest", dst])
+    print(f"voice: {voice_name}")
     print(f"done: {dst} ({total:.1f}s, {len(script['scenes'])} scenes)")
 
 
